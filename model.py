@@ -1,3 +1,7 @@
+"""This is the model used for classfying textures of our hackathon project.
+   The method of fine-tune was employed by adding new FC layer to
+   InceptionV3 network used in ImageNet contest.
+"""
 import os
 import sys
 import glob
@@ -7,8 +11,9 @@ from keras.callbacks import ModelCheckpoint
 
 from keras import __version__
 from keras.applications.inception_v3 import InceptionV3, preprocess_input
+from keras.utils.vis_utils import plot_model
 from keras.models import Model
-from keras.layers import Dense, GlobalAveragePooling2D
+from keras.layers import Dense, GlobalAveragePooling2D, Dropout
 from keras.preprocessing.image import ImageDataGenerator
 from keras.optimizers import SGD
 
@@ -16,7 +21,8 @@ from keras.optimizers import SGD
 IM_WIDTH, IM_HEIGHT = 299, 299  # fixed size for InceptionV3
 NB_EPOCHS = 3
 BAT_SIZE = 32
-FC_SIZE = 1024
+# FC_SIZE = 1024
+FC_SIZE = 256  # decrease FC_SIZE to prevent overfitting
 NB_IV3_LAYERS_TO_FREEZE = 172
 
 
@@ -51,7 +57,9 @@ def add_new_last_layer(base_model, nb_classes):
     """
     x = base_model.output
     x = GlobalAveragePooling2D()(x)
+    # print(x)
     x = Dense(FC_SIZE, activation='relu')(x)  # new FC layer, random init
+    x = Dropout(0.5)(x)  # add Dropout layer to prevent overfitting
     predictions = Dense(nb_classes, activation='softmax')(
         x)  # new softmax layer
     model = Model(input=base_model.input, output=predictions)
@@ -82,7 +90,7 @@ def train(args):
     nb_epoch = int(args.nb_epoch)
     batch_size = int(args.batch_size)
 
-    filepath = "finetune.hdf5"
+    filepath = "finetune-5-classes.hdf5"
     checkpoint = ModelCheckpoint(
         filepath, monitor='val_acc', verbose=1, save_best_only=True, mode=max)
     callbacks_list = [checkpoint]
@@ -137,6 +145,7 @@ def train(args):
         samples_per_epoch=nb_train_samples,
         validation_data=validation_generator,
         nb_val_samples=nb_val_samples,
+        callbacks=callbacks_list,
         class_weight='auto')
 
     # fine-tuning
@@ -148,7 +157,10 @@ def train(args):
         nb_epoch=nb_epoch,
         validation_data=validation_generator,
         nb_val_samples=nb_val_samples,
+        callbacks=callbacks_list,
         class_weight='auto')
+
+    plot_model(model, to_file='model1.png', show_shapes=True)
 
     model.save(args.output_model_file)
 
@@ -180,7 +192,7 @@ if __name__ == "__main__":
     a.add_argument("--val_dir")
     a.add_argument("--nb_epoch", default=NB_EPOCHS)
     a.add_argument("--batch_size", default=BAT_SIZE)
-    a.add_argument("--output_model_file", default="inceptionv3-ft.model")
+    a.add_argument("--output_model_file", default="5-classes.model")
     # a.add_argument("--plot", action="store_true")
 
     args = a.parse_args()
