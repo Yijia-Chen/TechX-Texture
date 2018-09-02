@@ -1,4 +1,4 @@
-uploads/*.jpg
-uploads/*.png
-models/*.h5
+keras-flask-deploy-server/uploads/*.jpg
+keras-flask-deploy-server/uploads/*.png
+keras-flask-deploy-server/models/*.h5
 .DS_Store
